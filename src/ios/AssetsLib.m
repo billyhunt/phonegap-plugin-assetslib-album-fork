@@ -18,6 +18,8 @@
 @property (nonatomic, strong) ALAssetsLibrary *assetsLibrary;
 @property (nonatomic, strong) NSMutableArray *groups;
 @property (nonatomic, strong) NSMutableArray *assets;
+@property (nonatomic, strong) NSMutableArray *assetsAlbumName;
+
 @property int assetsCount;
 
 @end
@@ -45,6 +47,13 @@
     } else {
         [self.assets removeAllObjects];
     }
+    if (!self.assetsAlbumName) {
+        _assetsAlbumName = [[NSMutableArray alloc] init];
+    } else {
+        [self.assetsAlbumName removeAllObjects];
+    }
+
+    
     self.assetsCount = 0;
     
     ALAssetsGroupEnumerationResultsBlock assetsEnumerationBlock = ^(ALAsset *result, NSUInteger index, BOOL *stop) {
@@ -81,7 +90,15 @@
         // NSLog(@"AssetsLib::getAllPhotos::listGroupBlock > %@ (%d)   type: %@    url: %@",[group valueForProperty:ALAssetsGroupPropertyName],[group numberOfAssets],[group valueForProperty:ALAssetsGroupPropertyType],[group valueForProperty:ALAssetsGroupPropertyURL]);
         if ([group numberOfAssets] > 0)
         {
-            NSLog(@"Got asset group \"%@\" with %ld photos",[group valueForProperty:ALAssetsGroupPropertyName],(long)[group numberOfAssets]);
+            int groupAssetNum = [group numberOfAssets];
+            NSString *groupName = [group valueForProperty:ALAssetsGroupPropertyName];
+            NSLog(@"Got asset group \"%@\" with %ld photos",groupName,(long)groupAssetNum);
+
+            //Save Album names to given image
+            for (int i=0; i<groupAssetNum; i++) {
+                [self.assetsAlbumName addObject:groupName];
+            }
+            
             [self.groups addObject:group];
             self.assetsCount += [group numberOfAssets];
         }
@@ -90,6 +107,7 @@
             NSLog(@"Got all %lu asset groups with total %d assets",(unsigned long)[self.groups count],self.assetsCount);
             for (group in self.groups)
             {   // Enumarate each asset group
+                NSLog(@"in AssetLib, group is %@", group);
                 ALAssetsFilter *onlyPhotosFilter = [ALAssetsFilter allPhotos];
                 [group setAssetsFilter:onlyPhotosFilter];
                 [group enumerateAssetsUsingBlock:assetsEnumerationBlock];
@@ -120,11 +138,15 @@
         for (int i=0; i<[self.assets count]; i++)
         {
             ALAsset* asset = self.assets[i];
+//            NSURL* filePath = asset.defaultRepresentation.url;
+//            NSLog(@"in assetsLib, filePath is %@", filePath);
             NSString* url = [[asset valueForProperty:ALAssetPropertyAssetURL] absoluteString];
+//            NSLog(@"in getAllPhotoMetadataComplete: assetsGroupName[i] is %@", self.assetsAlbumName[i]);
             NSString* date = [dateFormatter stringFromDate:[asset valueForProperty:ALAssetPropertyDate]];
             NSDictionary* photo = @{
                                     @"url": url,
-                                    @"date": date
+                                    @"date": date,
+                                    @"albumName": self.assetsAlbumName[i]
                                   };
             NSMutableDictionary* photometa = [self getImageMeta:asset];
             [photometa addEntriesFromDictionary:photo];
